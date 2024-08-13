@@ -107,19 +107,6 @@ function saveToCSV(manufacturerRelations) {
   console.log("CSV file has been saved.");
 }
 
-// Function to assign a manufacturer based on the title
-function assignManufacturerByTitle(title, apoData, manufacturerMap) {
-  const product = apoData.find((p) => p.title.trim() === title.trim());
-  console.log("check product title", product, apoData[0].title);
-  if (product) {
-    const relatedManufacturers = manufacturerMap[product.manufacturer];
-    if (relatedManufacturers && relatedManufacturers.size > 0) {
-      return Array.from(relatedManufacturers)[0];
-    }
-  }
-  return null;
-}
-
 // Main function to execute the process
 async function main() {
   console.log("Processing data, please wait...");
@@ -133,17 +120,6 @@ async function main() {
   saveToCSV(manufacturerRelations);
 
   console.log("Processing complete.");
-
-  const exampleTitle = "Your Product Title Here";
-  const assignedManufacturer = assignManufacturerByTitle(
-    exampleTitle,
-    apoData,
-    manufacturerMap
-  );
-  console.log(
-    `Assigned Manufacturer for "${exampleTitle}":`,
-    assignedManufacturer
-  );
 }
 
 main();
