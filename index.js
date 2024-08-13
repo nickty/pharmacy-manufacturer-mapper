@@ -1,25 +1,40 @@
-const fs = require("fs");
-const csv = require("csv-parser");
-const { parse } = require("json2csv");
+const fs = require('fs');
+const csv = require('csv-parser');
+const { parse } = require('json2csv');
 
 // Function to parse CSV files
 function parseCSV(filePath) {
   return new Promise((resolve, reject) => {
     const results = [];
     fs.createReadStream(filePath)
-      .pipe(csv({ separator: ";" })) // Adjusted separator to semicolon
-      .on("data", (data) => results.push(data))
-      .on("end", () => resolve(results))
-      .on("error", (err) => reject(err));
+      .pipe(csv()) // Adjusted separator to semicolon
+      .on('data', (data) => results.push(data))
+      .on('end', () => resolve(results))
+      .on('error', (err) => reject(err));
   });
 }
 
-// Function to load data from CSV files
+// Function to load data from multiple CSV files
 async function loadData() {
-  const apoData = await parseCSV("./data/bnu-lt-data.csv");
-  const matches = await parseCSV("./data/matches.csv");
+  const csvFiles = [
+    './data/bnu-lt-data.csv',
+    './data/apo-lt-data.csv',
+    './data/azt-lt-data.csv',
+    './data/cma-lt-data.csv',
+    './data/gin-lt-data.csv',
+    './data/ntn-lt-data.csv'
+  ];
 
-  console.log("check before", apoData);
+  let apoData = [];
+
+  for (const file of csvFiles) {
+    const data = await parseCSV(file);
+    apoData = apoData.concat(data);
+  }
+
+  const matches = await parseCSV('./data/matches.csv');
+
+  console.log('Combined APO Data:', apoData);
 
   return { apoData, matches };
 }
@@ -29,16 +44,12 @@ function mapRelatedManufacturers(matches, apoData) {
   const manufacturerMap = {};
 
   matches.forEach((match) => {
-    const mainProduct = apoData.find((p) => {
-      // console.log("first", p, match.m_source_id);
-      return p.source_id === match.m_source_id && p.source === match.m_source;
-    });
-    const compProduct = apoData.find(
-      (p) => p.source_id === match.c_source_id && p.source === match.c_source
+    const mainProduct = apoData.find(
+      (p) => p.source_id?.trim() === match.m_source_id?.trim() && p.source?.trim() === match.m_source?.trim()
     );
-
-    // console.log("mainProduct", mainProduct);
-    // console.log("compProduct", compProduct);
+    const compProduct = apoData.find(
+      (p) => p.source_id?.trim() === match.c_source_id?.trim() && p.source?.trim() === match.c_source?.trim()
+    );
 
     if (mainProduct && compProduct) {
       const mainManufacturer = mainProduct.manufacturer;
@@ -68,7 +79,7 @@ function assignRelationType(manufacturerMap) {
 
   Object.keys(manufacturerMap).forEach((parent) => {
     manufacturerMap[parent].forEach((child) => {
-      relations.push({ parent, child, relation_type: "sibling" });
+      relations.push({ parent, child, relation_type: 'sibling' });
     });
   });
 
@@ -78,20 +89,20 @@ function assignRelationType(manufacturerMap) {
 // Function to save mapped data to CSV
 function saveToCSV(manufacturerRelations) {
   if (manufacturerRelations.length === 0) {
-    console.error("No manufacturer relations found to save.");
+    console.error('No manufacturer relations found to save.');
     return;
   }
 
-  const fields = ["parent", "child", "relation_type"];
+  const fields = ['parent', 'child', 'relation_type'];
   const csvData = parse(manufacturerRelations, { fields });
 
-  fs.writeFileSync("./output/manufacturerRelations.csv", csvData);
-  console.log("CSV file has been saved.");
+  fs.writeFileSync('./output/manufacturerRelations.csv', csvData);
+  console.log('CSV file has been saved.');
 }
 
 // Function to assign a manufacturer based on the title
 function assignManufacturerByTitle(title, apoData, manufacturerMap) {
-  const product = apoData.find((p) => p.title === title);
+  const product = apoData.find((p) => p.title?.trim() === title?.trim());
   if (product) {
     const relatedManufacturers = manufacturerMap[product.manufacturer];
     if (relatedManufacturers && relatedManufacturers.size > 0) {
@@ -105,28 +116,16 @@ function assignManufacturerByTitle(title, apoData, manufacturerMap) {
 async function main() {
   const { apoData, matches } = await loadData();
 
-  // console.log("check matches", matches.length);
-  // console.log("check matches", apoData.length);
-
   const manufacturerMap = mapRelatedManufacturers(matches, apoData);
-
-  console.log("check mmm", manufacturerMap);
 
   const manufacturerRelations = assignRelationType(manufacturerMap);
 
   saveToCSV(manufacturerRelations);
 
   // Example of assigning a manufacturer by title
-  const exampleTitle = "Your Product Title Here";
-  const assignedManufacturer = assignManufacturerByTitle(
-    exampleTitle,
-    apoData,
-    manufacturerMap
-  );
-  console.log(
-    `Assigned Manufacturer for "${exampleTitle}":`,
-    assignedManufacturer
-  );
+  const exampleTitle = 'Your Product Title Here';
+  const assignedManufacturer = assignManufacturerByTitle(exampleTitle, apoData, manufacturerMap);
+  console.log(`Assigned Manufacturer for "${exampleTitle}":`, assignedManufacturer);
 }
 
 main();
