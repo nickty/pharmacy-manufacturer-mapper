@@ -107,6 +107,50 @@ function saveToCSV(manufacturerRelations) {
   console.log("CSV file has been saved.");
 }
 
+// Function to assign a manufacturer based on the title
+function assignManufacturerByTitle(title, apoData, manufacturerMap) {
+  // Find the product with the given title
+  const product = apoData.find(
+    (p) => p.title.trim().toLowerCase() === title.trim().toLowerCase()
+  );
+
+  if (!product) {
+    console.log(`No product found with the title: ${title}`);
+    return null;
+  }
+
+  // Check if the product already has a manufacturer
+  if (product.manufacturer && product.manufacturer.trim() !== "") {
+    console.log(
+      `Manufacturer already assigned for product "${title}": ${product.manufacturer}`
+    );
+    return product.manufacturer;
+  }
+
+  // If no manufacturer is assigned, attempt to use related manufacturers
+  let possibleManufacturer = null;
+
+  // Look for other products with the same title but with a manufacturer assigned
+  const similarProducts = apoData.filter(
+    (p) =>
+      p.title.trim().toLowerCase() === title.trim().toLowerCase() &&
+      p.manufacturer &&
+      p.manufacturer.trim() !== ""
+  );
+
+  // If similar products with manufacturers are found, use their manufacturer
+  if (similarProducts.length > 0) {
+    possibleManufacturer = similarProducts[0].manufacturer; // Use the first match
+    console.log(
+      `Assigned Manufacturer for product "${title}": ${possibleManufacturer}`
+    );
+    return possibleManufacturer;
+  }
+
+  console.log(`No manufacturer found for product "${title}".`);
+  return null;
+}
+
 // Main function to execute the process
 async function main() {
   console.log("Processing data, please wait...");
@@ -120,6 +164,17 @@ async function main() {
   saveToCSV(manufacturerRelations);
 
   console.log("Processing complete.");
+
+  const exampleTitle = "Libellys Dermo-Sensitive sauskelnės S (3-6 kg) 30 Vnt."; // Replace with actual product title
+  const assignedManufacturer = assignManufacturerByTitle(
+    exampleTitle,
+    apoData,
+    manufacturerMap
+  );
+  console.log(
+    `Assigned Manufacturer for "${exampleTitle}":`,
+    assignedManufacturer
+  );
 }
 
 main();
